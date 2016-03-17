@@ -10,7 +10,7 @@ library(tidyr)
 library(readr)
 library(lubridate)
 
-projdir <- "~/projects_environment_general_local/Air_Pollution_Monitoring_Stations_NSW/AP_monitor_NSW_1994_2013_hrly/"
+projdir <- "Q:/Research/Environment_General/Air_Pollution_Monitoring_Stations_NSW/AP_monitor_NSW_1994_2013_hrly/"
 setwd(projdir)
 dir()
 indir  <- "data_provided"
@@ -60,7 +60,14 @@ nswaq9413 [nswaq9413 < 0] <- NA
 
 # check the class of each column
 lapply (nswaq9413, class)
-
+write.table(nswaq9413, 'data_derived/nswaq9413.hrly.csv', row.names = F, sep  = ",")
+library(disentangle)
+str(nswaq9413)
+dd <- data_dictionary(as.data.frame(nswaq9413))
+write.csv(dd, "data_derived/nswaq9413.hrly.data_dictionary.csv", row.names = F)
+vl <- variable_names_and_labels(datadict=dd)
+write.csv(vl, "data_derived/nswaq9413.hrly.variable_names_and_labels.csv", row.names = F)
+remove(dd, vl)
 # calculate the daily average (at least 75% of data needed for each day otherwise NA)
 # WS and WD data should not be averaged using this approach (the columns heading needs to change to ws and wd firstly)
 nswaq9413.daily.avg <- timeAverage (nswaq9413, avg.time = "day", data.thresh = 75, interval = "hour")
@@ -246,4 +253,8 @@ if (napercent_pm25$na.pm2.5.percent<5) {
 nswaq9413.daily.sydney <- nswaq9413.daily.sydney %>% mutate (pm2.5=round (pm2.5, digits=1),pm10=round (pm10, digits=1),o3=round (o3, digits=1),o3max=round (o3max, digits=1),humidity=round (humidity, digits=1),temp=round (temp, digits=1),co=round (co, digits=1),no=round (no, digits=1), no2=round (no2, digits=1), nox =round (nox, digits=1), so2 =round (so2, digits=1))
 
 # saving the file
-write_csv (nswaq9413.daily.sydney, path ="nswaq9413.daily.sydney.csv")
+write_csv (nswaq9413.daily.sydney, path ="data_derived/nswaq9413.daily.sydney.csv")
+dd <- data_dictionary(as.data.frame(nswaq9413.daily.sydney))
+write.csv(dd, "data_derived/nswaq9413.daily.sydney.data_dictionary.csv", row.names = F)
+vl <- variable_names_and_labels(datadict=dd)
+write.csv(vl, "data_derived/nswaq9413.daily.sydney.variable_names_and_labels.csv", row.names = F)
