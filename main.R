@@ -16,7 +16,7 @@ dir()
 indir  <- "data_provided"
 dir(indir)
 
-#importing the data (using the openair import function in combination with tb_df)
+#importing the data (using the openair import function in combination with tbl_df)
 nsw9498 <-  tbl_df (import (file.path("data_provided", "/OEH (1994-1998)_AllSites_1hrlyData.csv")))
 nsw9903 <-  tbl_df (import (file.path("data_provided", "/OEH (1999-2003)__AllSites_1hrlyData.csv")))
 nsw0408 <-  tbl_df (import (file.path("data_provided", "/OEH (2004-2008)__AllSites_1hrlyData.csv")))
@@ -210,6 +210,147 @@ nswaq9413.pm2.5.daily.sydney <- left_join(nswaq9413.pm2.5.daily.sydney, data.new
 
 remove (data.othersitesaverage3,data.othersitesaverage4,data.siteaverage,data.othersitesaverage,data.siteandotheraverage,data.dailyaverage,data.impute,data.new,data.new1)
 
+#pm10 imputation
+data <- nswaq9413.pm10.daily.sydney %>% select (date, site, pm10)
+data <- data %>% mutate (month = month(date), year = year(date)) %>%
+  mutate(season = ifelse (month == 12 | month ==1 | month == 2, "summer",.) %>%
+           ifelse (month == 3 | month == 4 | month == 5,"autumn",.) %>%
+           ifelse(month == 6 | month ==7 | month == 8, "winter",.) %>%
+           ifelse(month == 9 | month ==10 | month == 11, "spring",.)) %>%
+  mutate (season = as.character(season))
+
+data.siteaverage <- data %>% group_by(site,year,season) %>% summarise(site.mean.pm10 = mean(pm10, na.rm =TRUE))
+
+data.othersitesaverage1 <- data %>% filter (site != "bringelly") %>% group_by(year,season) %>% summarise(othersites.mean.pm10 = mean(pm10, na.rm =TRUE)) %>% mutate(site="bringelly")
+data.othersitesaverage2 <- data %>% filter (site != "earlwood") %>% group_by(year,season) %>% summarise(othersites.mean.pm10 = mean(pm10, na.rm =TRUE)) %>% mutate(site="earlwood")
+data.othersitesaverage3 <- data %>% filter (site != "lindfield") %>% group_by(year,season) %>% summarise(othersites.mean.pm10 = mean(pm10, na.rm =TRUE)) %>% mutate(site="lindfield")
+data.othersitesaverage4 <- data %>% filter (site != "liverpool") %>% group_by(year,season) %>% summarise(othersites.mean.pm10 = mean(pm10, na.rm =TRUE)) %>% mutate(site="liverpool")
+data.othersitesaverage5 <- data %>% filter (site != "randwick") %>% group_by(year,season) %>% summarise(othersites.mean.pm10 = mean(pm10, na.rm =TRUE)) %>% mutate(site="randwick")
+data.othersitesaverage6 <- data %>% filter (site != "richmond") %>% group_by(year,season) %>% summarise(othersites.mean.pm10 = mean(pm10, na.rm =TRUE)) %>% mutate(site="richmond")
+data.othersitesaverage7 <- data %>% filter (site != "st.marys") %>% group_by(year,season) %>% summarise(othersites.mean.pm10 = mean(pm10, na.rm =TRUE)) %>% mutate(site="st.marys")
+data.othersitesaverage8 <- data %>% filter (site != "vineyard") %>% group_by(year,season) %>% summarise(othersites.mean.pm10 = mean(pm10, na.rm =TRUE)) %>% mutate(site="vineyard")
+
+
+
+data.othersitesaverage <-  rbind_list(data.othersitesaverage1,data.othersitesaverage2,data.othersitesaverage3,data.othersitesaverage4,data.othersitesaverage5,data.othersitesaverage6,data.othersitesaverage7,data.othersitesaverage8)
+
+data.siteandotheraverage <- full_join(data.siteaverage,data.othersitesaverage)
+data.siteandotheraverage <- data.siteandotheraverage %>% mutate (factor = site.mean.pm10/othersites.mean.pm10)
+
+data.dailyaverage <- data %>% group_by (date) %>% summarise (mean.pm10 = mean(pm10, na.rm = TRUE)) %>%
+  mutate (month = month(date), year = year(date)) %>% 
+  mutate(season = ifelse (month == 12 | month ==1 | month == 2, "summer",.) %>%
+           ifelse (month == 3 | month == 4 | month == 5,"autumn",.) %>%
+           ifelse(month == 6 | month ==7 | month == 8, "winter",.) %>%
+           ifelse(month == 9 | month ==10 | month == 11, "spring",.)) %>%
+  mutate (season = as.character(season))
+data.impute <- left_join (data.dailyaverage,data.siteandotheraverage)
+data.impute <- data.impute %>% mutate (pm10.impute = mean.pm10 * factor) %>% select (date,site,pm10.impute)
+data.new <- left_join (data, data.impute)
+data.new1 <- data.new %>% filter (is.na(pm10)) %>% mutate (pm10 = pm10.impute)
+data.new <- data.new %>% filter (!is.na(pm10))
+data.new <- rbind_list(data.new, data.new1)
+data.new <-  data.new %>% select(-c(pm10.impute, season, year, month))
+
+nswaq9413.pm10.daily.sydney  <- nswaq9413.pm10.daily.sydney %>% select(-pm10)
+nswaq9413.pm10.daily.sydney <- left_join(nswaq9413.pm10.daily.sydney, data.new)
+
+remove (data.othersitesaverage1,data.othersitesaverage2,data.othersitesaverage3,data.othersitesaverage4,data.othersitesaverage5,data.othersitesaverage6,data.othersitesaverage7,data.othersitesaverage8,data.siteaverage,data.othersitesaverage,data.siteandotheraverage,data.dailyaverage,data.impute,data.new,data.new1)
+
+#o3 imputation
+data <- nswaq9413.o3.daily.sydney %>% select (date, site, o3)
+data <- data %>% mutate (month = month(date), year = year(date)) %>%
+  mutate(season = ifelse (month == 12 | month ==1 | month == 2, "summer",.) %>%
+           ifelse (month == 3 | month == 4 | month == 5,"autumn",.) %>%
+           ifelse(month == 6 | month ==7 | month == 8, "winter",.) %>%
+           ifelse(month == 9 | month ==10 | month == 11, "spring",.)) %>%
+  mutate (season = as.character(season))
+
+data.siteaverage <- data %>% group_by(site,year,season) %>% summarise(site.mean.o3 = mean(o3, na.rm =TRUE))
+
+data.othersitesaverage1 <- data %>% filter (site != "bringelly") %>% group_by(year,season) %>% summarise(othersites.mean.o3 = mean(o3, na.rm =TRUE)) %>% mutate(site="bringelly")
+data.othersitesaverage2 <- data %>% filter (site != "earlwood") %>% group_by(year,season) %>% summarise(othersites.mean.o3 = mean(o3, na.rm =TRUE)) %>% mutate(site="earlwood")
+data.othersitesaverage3 <- data %>% filter (site != "lindfield") %>% group_by(year,season) %>% summarise(othersites.mean.o3 = mean(o3, na.rm =TRUE)) %>% mutate(site="lindfield")
+data.othersitesaverage4 <- data %>% filter (site != "liverpool") %>% group_by(year,season) %>% summarise(othersites.mean.o3 = mean(o3, na.rm =TRUE)) %>% mutate(site="liverpool")
+data.othersitesaverage5 <- data %>% filter (site != "randwick") %>% group_by(year,season) %>% summarise(othersites.mean.o3 = mean(o3, na.rm =TRUE)) %>% mutate(site="randwick")
+data.othersitesaverage6 <- data %>% filter (site != "richmond") %>% group_by(year,season) %>% summarise(othersites.mean.o3 = mean(o3, na.rm =TRUE)) %>% mutate(site="richmond")
+data.othersitesaverage7 <- data %>% filter (site != "st.marys") %>% group_by(year,season) %>% summarise(othersites.mean.o3 = mean(o3, na.rm =TRUE)) %>% mutate(site="st.marys")
+data.othersitesaverage8 <- data %>% filter (site != "vineyard") %>% group_by(year,season) %>% summarise(othersites.mean.o3 = mean(o3, na.rm =TRUE)) %>% mutate(site="vineyard")
+data.othersitesaverage9 <- data %>% filter (site != "rozelle") %>% group_by(year,season) %>% summarise(othersites.mean.o3 = mean(o3, na.rm =TRUE)) %>% mutate(site="rozelle")
+
+
+data.othersitesaverage <-  rbind_list(data.othersitesaverage1,data.othersitesaverage2,data.othersitesaverage3,data.othersitesaverage4,data.othersitesaverage5,data.othersitesaverage6,data.othersitesaverage7,data.othersitesaverage8,data.othersitesaverage9)
+
+data.siteandotheraverage <- full_join(data.siteaverage,data.othersitesaverage)
+data.siteandotheraverage <- data.siteandotheraverage %>% mutate (factor = site.mean.o3/othersites.mean.o3)
+
+data.dailyaverage <- data %>% group_by (date) %>% summarise (mean.o3 = mean(o3, na.rm = TRUE)) %>%
+  mutate (month = month(date), year = year(date)) %>% 
+  mutate(season = ifelse (month == 12 | month ==1 | month == 2, "summer",.) %>%
+           ifelse (month == 3 | month == 4 | month == 5,"autumn",.) %>%
+           ifelse(month == 6 | month ==7 | month == 8, "winter",.) %>%
+           ifelse(month == 9 | month ==10 | month == 11, "spring",.)) %>%
+  mutate (season = as.character(season))
+data.impute <- left_join (data.dailyaverage,data.siteandotheraverage)
+data.impute <- data.impute %>% mutate (o3.impute = mean.o3 * factor) %>% select (date,site,o3.impute)
+data.new <- left_join (data, data.impute)
+data.new1 <- data.new %>% filter (is.na(o3)) %>% mutate (o3 = o3.impute)
+data.new <- data.new %>% filter (!is.na(o3))
+data.new <- rbind_list(data.new, data.new1)
+data.new <-  data.new %>% select(-c(o3.impute, season, year, month))
+
+nswaq9413.o3.daily.sydney  <- nswaq9413.o3.daily.sydney %>% select(-o3)
+nswaq9413.o3.daily.sydney <- left_join(nswaq9413.o3.daily.sydney, data.new)
+
+remove (data.othersitesaverage1,data.othersitesaverage2,data.othersitesaverage3,data.othersitesaverage4,data.othersitesaverage5,data.othersitesaverage6,data.othersitesaverage7,data.othersitesaverage8,data.othersitesaverage9,data.siteaverage,data.othersitesaverage,data.siteandotheraverage,data.dailyaverage,data.impute,data.new,data.new1)
+
+#o3max imputation
+data <- nswaq9413.o3max.daily.sydney %>% select (date, site, o3max)
+data <- data %>% mutate (month = month(date), year = year(date)) %>%
+  mutate(season = ifelse (month == 12 | month ==1 | month == 2, "summer",.) %>%
+           ifelse (month == 3 | month == 4 | month == 5,"autumn",.) %>%
+           ifelse(month == 6 | month ==7 | month == 8, "winter",.) %>%
+           ifelse(month == 9 | month ==10 | month == 11, "spring",.)) %>%
+  mutate (season = as.character(season))
+
+data.siteaverage <- data %>% group_by(site,year,season) %>% summarise(site.mean.o3max = mean(o3max, na.rm =TRUE))
+
+data.othersitesaverage1 <- data %>% filter (site != "bringelly") %>% group_by(year,season) %>% summarise(othersites.mean.o3max = mean(o3max, na.rm =TRUE)) %>% mutate(site="bringelly")
+data.othersitesaverage2 <- data %>% filter (site != "earlwood") %>% group_by(year,season) %>% summarise(othersites.mean.o3max = mean(o3max, na.rm =TRUE)) %>% mutate(site="earlwood")
+data.othersitesaverage3 <- data %>% filter (site != "lindfield") %>% group_by(year,season) %>% summarise(othersites.mean.o3max = mean(o3max, na.rm =TRUE)) %>% mutate(site="lindfield")
+data.othersitesaverage4 <- data %>% filter (site != "liverpool") %>% group_by(year,season) %>% summarise(othersites.mean.o3max = mean(o3max, na.rm =TRUE)) %>% mutate(site="liverpool")
+data.othersitesaverage5 <- data %>% filter (site != "randwick") %>% group_by(year,season) %>% summarise(othersites.mean.o3max = mean(o3max, na.rm =TRUE)) %>% mutate(site="randwick")
+data.othersitesaverage6 <- data %>% filter (site != "richmond") %>% group_by(year,season) %>% summarise(othersites.mean.o3max = mean(o3max, na.rm =TRUE)) %>% mutate(site="richmond")
+data.othersitesaverage7 <- data %>% filter (site != "st.marys") %>% group_by(year,season) %>% summarise(othersites.mean.o3max = mean(o3max, na.rm =TRUE)) %>% mutate(site="st.marys")
+data.othersitesaverage8 <- data %>% filter (site != "vineyard") %>% group_by(year,season) %>% summarise(othersites.mean.o3max = mean(o3max, na.rm =TRUE)) %>% mutate(site="vineyard")
+data.othersitesaverage9 <- data %>% filter (site != "rozelle") %>% group_by(year,season) %>% summarise(othersites.mean.o3max = mean(o3max, na.rm =TRUE)) %>% mutate(site="rozelle")
+
+
+data.othersitesaverage <-  rbind_list(data.othersitesaverage1,data.othersitesaverage2,data.othersitesaverage3,data.othersitesaverage4,data.othersitesaverage5,data.othersitesaverage6,data.othersitesaverage7,data.othersitesaverage8,data.othersitesaverage9)
+
+data.siteandotheraverage <- full_join(data.siteaverage,data.othersitesaverage)
+data.siteandotheraverage <- data.siteandotheraverage %>% mutate (factor = site.mean.o3max/othersites.mean.o3max)
+
+data.dailyaverage <- data %>% group_by (date) %>% summarise (mean.o3max = mean(o3max, na.rm = TRUE)) %>%
+  mutate (month = month(date), year = year(date)) %>% 
+  mutate(season = ifelse (month == 12 | month ==1 | month == 2, "summer",.) %>%
+           ifelse (month == 3 | month == 4 | month == 5,"autumn",.) %>%
+           ifelse(month == 6 | month ==7 | month == 8, "winter",.) %>%
+           ifelse(month == 9 | month ==10 | month == 11, "spring",.)) %>%
+  mutate (season = as.character(season))
+data.impute <- left_join (data.dailyaverage,data.siteandotheraverage)
+data.impute <- data.impute %>% mutate (o3max.impute = mean.o3max * factor) %>% select (date,site,o3max.impute)
+data.new <- left_join (data, data.impute)
+data.new1 <- data.new %>% filter (is.na(o3max)) %>% mutate (o3max = o3max.impute)
+data.new <- data.new %>% filter (!is.na(o3max))
+data.new <- rbind_list(data.new, data.new1)
+data.new <-  data.new %>% select(-c(o3max.impute, season, year, month))
+
+nswaq9413.o3max.daily.sydney  <- nswaq9413.o3max.daily.sydney %>% select(-o3max)
+nswaq9413.o3max.daily.sydney <- left_join(nswaq9413.o3max.daily.sydney, data.new)
+
+remove (data.othersitesaverage1,data.othersitesaverage2,data.othersitesaverage3,data.othersitesaverage4,data.othersitesaverage5,data.othersitesaverage6,data.othersitesaverage7,data.othersitesaverage8,data.othersitesaverage9,data.siteaverage,data.othersitesaverage,data.siteandotheraverage,data.dailyaverage,data.impute,data.new,data.new1)
+
 nswaq9413.pm2.5.daily.sydney <- nswaq9413.pm2.5.daily.sydney %>% group_by (date) %>% summarise (pm2.5 = mean (pm2.5, na.rm = TRUE))
 nswaq9413.pm10.daily.sydney <- nswaq9413.pm10.daily.sydney %>% group_by (date) %>% summarise (pm10 = mean (pm10, na.rm = TRUE))
 nswaq9413.o3.daily.sydney <- nswaq9413.o3.daily.sydney %>% group_by (date) %>% summarise (o3 = mean (o3, na.rm = TRUE))
@@ -237,6 +378,7 @@ nswaq9413.daily.sydney <- left_join (nswaq9413.daily.sydney, nswaq9413.so2.daily
 remove (temp.sites, sites, so2.sites, pm10.sites, pm2.5.sites, o3.sites,humidity.sites, nswaq9413.humidity.daily.sydney, nswaq9413.o3.daily.sydney,nswaq9413.o3max.daily.sydney, nswaq9413.pm10.daily.sydney,nswaq9413.so2.daily.sydney, nswaq9413.pm2.5.daily.sydney, nswaq9413.temp.daily.sydney,nswaq9413.co.daily.sydney, nswaq9413.no.daily.sydney, nswaq9413.no2.daily.sydney, nswaq9413.nox.daily.sydney , co.sites, no.sites, no2.sites, nox.sites)
 
 # if NA's are less than 5%, replace NA with the mean of the values from the previous and next days
+#pm2.5
 first_nonna_pm25_row <- min(which(!is.na(nswaq9413.daily.sydney$pm2.5)))
 napercent_pm25 <- nswaq9413.daily.sydney %>% 
   slice (first_nonna_pm25_row:nrow(nswaq9413.daily.sydney)) %>%
@@ -246,7 +388,43 @@ if (napercent_pm25$na.pm2.5.percent<5) {
   nswaq9413.daily.sydney <- nswaq9413.daily.sydney %>% arrange(date) %>%
     mutate(pm2.5_lag= lag(pm2.5), pm2.5_lead=lead(pm2.5)) %>%
     mutate(pm2.5= ifelse(is.na(pm2.5), 0.5*(pm2.5_lag+pm2.5_lead), pm2.5)) 
-}  
+}
+
+#pm10
+first_nonna_pm10_row <- min(which(!is.na(nswaq9413.daily.sydney$pm10)))
+napercent_pm10 <- nswaq9413.daily.sydney %>% 
+  slice (first_nonna_pm10_row:nrow(nswaq9413.daily.sydney)) %>%
+  summarise (total.count = n(), na.pm10 = sum(is.na(pm10)), na.pm10.percent =100*na.pm10/total.count)
+
+if (napercent_pm10$na.pm10.percent<5) {
+  nswaq9413.daily.sydney <- nswaq9413.daily.sydney %>% arrange(date) %>%
+    mutate(pm10_lag= lag(pm10), pm10_lead=lead(pm10)) %>%
+    mutate(pm10= ifelse(is.na(pm10), 0.5*(pm10_lag+pm10_lead), pm10)) 
+}
+
+#o3
+first_nonna_o3_row <- min(which(!is.na(nswaq9413.daily.sydney$o3)))
+napercent_o3 <- nswaq9413.daily.sydney %>% 
+  slice (first_nonna_o3_row:nrow(nswaq9413.daily.sydney)) %>%
+  summarise (total.count = n(), na.o3 = sum(is.na(o3)), na.o3.percent =100*na.o3/total.count)
+
+if (napercent_o3$na.o3.percent<5) {
+  nswaq9413.daily.sydney <- nswaq9413.daily.sydney %>% arrange(date) %>%
+    mutate(o3_lag= lag(o3), o3_lead=lead(o3)) %>%
+    mutate(o3= ifelse(is.na(o3), 0.5*(o3_lag+o3_lead), o3)) 
+}
+
+#o3max
+first_nonna_o3max_row <- min(which(!is.na(nswaq9413.daily.sydney$o3max)))
+napercent_o3max <- nswaq9413.daily.sydney %>% 
+  slice (first_nonna_o3max_row:nrow(nswaq9413.daily.sydney)) %>%
+  summarise (total.count = n(), na.o3max = sum(is.na(o3max)), na.o3max.percent =100*na.o3max/total.count)
+
+if (napercent_o3max$na.o3max.percent<5) {
+  nswaq9413.daily.sydney <- nswaq9413.daily.sydney %>% arrange(date) %>%
+    mutate(o3max_lag= lag(o3max), o3max_lead=lead(o3max)) %>%
+    mutate(o3max= ifelse(is.na(o3max), 0.5*(o3max_lag+o3max_lead), o3max)) 
+}
 
 
 # rounding to one decimal point
